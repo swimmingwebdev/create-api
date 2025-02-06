@@ -1,0 +1,95 @@
+---
+openapi: 3.0.0
+info:
+  title: SnowReport API
+  description: Simple API for snow report and lift lines
+  contact:
+    email: tguicherd@bcit.ca
+  version: 1.0.0
+paths:
+  /snow/conditions:
+    post:
+      summary: reports snow conditions
+      description: Adds a new snow condition report to the system
+      operationId: app.report_snow_conditions
+      requestBody:
+        description: Snow Conditions report to add
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnowConditions'
+      responses:
+        "201":
+          description: item created
+        "400":
+          description: "invalid input, object invalid"
+  /snow/liftlines:
+    post:
+      summary: reports lift line situation and waiting times
+      description: Adds a new lift line report to the system
+      operationId: app.report_lift_lines
+      requestBody:
+        description: Lift lines report to add
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiftLines'
+      responses:
+        "201":
+          description: item created
+        "400":
+          description: "invalid input, object invalid"
+components:
+  schemas:
+    SnowConditions:
+      required:
+      - device_id
+      - resort_id
+      - snow_depth
+      - timestamp
+      type: object
+      properties:
+        device_id:
+          type: string
+          description: The device ID reporting the snow reading
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        resort_id:
+          type: string
+          description: Resort ID (name)
+          example: Whistler
+        snow_depth:
+          type: integer
+          description: snow depth reported by the device
+          example: 120
+        timestamp:
+          type: string
+          description: timestamp when snow reading was taken
+          format: date-time
+          example: 2016-08-29T09:12:33.001Z
+
+    LiftLines:
+      required:
+      - lift_id
+      - resort_id
+      - timestamp
+      - wait_time
+      type: object
+      properties:
+        resort_id:
+          type: string
+          description: Resort ID (name)
+          example: Whistler
+        lift_id:
+          type: string
+          description: Lift ID for the report
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        wait_time:
+          type: integer
+          description: Average estimated wait time
+          example: 5
+        timestamp:
+          type: string
+          format: date-time
+          example: 2016-08-29T09:12:33.001Z

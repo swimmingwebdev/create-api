@@ -1,0 +1,11 @@
+---
+services:
+  db:
+    image: mysql
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 1234
+      MYSQL_USER: mysqluser
+      MYSQL_PASSWORD: 1234
+      MYSQL_DATABASE: mysimpletracker
+    ports:
+      - 3306:3306

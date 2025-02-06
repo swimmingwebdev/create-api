@@ -1,0 +1,26 @@
+meta {
+  name: trackLocations
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8080/track/locations
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "device_id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+    "latitude": 12.134567,
+    "longitude": 56.123456,
+    "location_name": "Downtown Vancouver",
+    "timestamp": "2025-01-07T12:34:56.001000+00:00",
+    "trace_id": "b6a8d7f2-345c-4a9e-b123-6a7e5f8c9d10"
+  }
+}
