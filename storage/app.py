@@ -8,11 +8,11 @@ import yaml
 import logging.config
 
 # Configurations
-with open('app_conf.yml', 'r') as f:
+with open('../storage/config/app_conf.yml', 'r') as f:
     app_config = yaml.safe_load(f.read())
 
 # Logging
-with open('log_conf.yml', 'r') as f:
+with open('../storage/config/log_conf.yml', 'r') as f:
     log_config = yaml.safe_load(f.read())
     logging.config.dictConfig(log_config)
 
@@ -30,12 +30,6 @@ db_url = f"mysql+mysqldb://{db_user}:{db_password}@{db_hostname}:{db_port}/{db_n
 
 # Initialize the engine
 engine = create_engine(db_url)
-
-# def create_tables():
-#     Base.metadata.create_all(engine)
-
-# def drop_tables():
-#     Base.metadata.drop_all(engine)
 
 def make_session():
     return sessionmaker(bind=engine)()
@@ -90,10 +84,9 @@ def trackAlerts(body):
     return NoContent, 201
 
 app = connexion.FlaskApp(__name__, specification_dir='.')
-app.add_api("openapi.yml", strict_validation=True, validate_responses=True)
+app.add_api("../storage/config/openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
-    # drop_tables()
-    # create_tables()
+
     logger.info("Receiver Service received")
     app.run(port=8090)

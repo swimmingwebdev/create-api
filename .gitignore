@@ -1,0 +1,8 @@
+*.jmx
+/bruno-my-simple-track
+/description
+/instruction
+/__pycache__
+*.pyc
+*.pdf
+*.log
