@@ -30,14 +30,15 @@ def trackGPS(body):
     logger.info(f"Received event trackGPS with a trace id of {trace_id}")
 
 
-    received_timestamp = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    received_timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
+
     
     data = {
             "device_id": body["device_id"],
             "latitude": body["latitude"],
             "longitude": body["longitude"],
             "location_name": body.get("location_name", "unknown"),
-            "timestamp": received_timestamp,
+            "timestamp": received_timestamp.isoformat().replace("+00:00", "Z"),
             "trace_id" : trace_id,
     }
 
@@ -58,7 +59,8 @@ def trackAlerts(body):
     logger.info(f"Received event trackAlerts with a trace id of {trace_id}")
 
     
-    received_timestamp = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    received_timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
+
     
     data = {
             "device_id": body["device_id"],
@@ -66,7 +68,7 @@ def trackAlerts(body):
             "longitude": body["longitude"],
             "location_name": body.get("location_name", "unknown"),
             "alert_desc": body.get("alert_desc", "No description provided."),
-            "timestamp": received_timestamp,
+            "timestamp": received_timestamp.isoformat().replace("+00:00", "Z"),
             "trace_id" : trace_id,
 
     }

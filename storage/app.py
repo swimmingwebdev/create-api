@@ -1,9 +1,9 @@
 import connexion
 from connexion import NoContent
 from models import Base, TrackAlerts, TrackLocations
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 import yaml
 import logging.config
 
@@ -26,9 +26,8 @@ db_hostname = app_config["datastore"]["hostname"]
 db_port = app_config["datastore"]["port"]
 db_name = app_config["datastore"]["db"]
 
-db_url = f"mysql+mysqldb://{db_user}:{db_password}@{db_hostname}:{db_port}/{db_name}"
-
 # Initialize the engine
+db_url = f"mysql+mysqldb://{db_user}:{db_password}@{db_hostname}:{db_port}/{db_name}"
 engine = create_engine(db_url)
 
 def make_session():
@@ -38,7 +37,7 @@ def make_session():
 def trackGPS(body):
     session = make_session()
 
-    timestamp = datetime.strptime(body["timestamp"], "%m/%d/%Y, %H:%M:%S")
+    timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
     trace_id = body["trace_id"]
 
     event = TrackLocations(
@@ -62,7 +61,7 @@ def trackGPS(body):
 def trackAlerts(body):
     session = make_session()
 
-    timestamp = datetime.strptime(body["timestamp"], "%m/%d/%Y, %H:%M:%S")
+    timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
     trace_id = body["trace_id"]
 
     event = TrackAlerts(
@@ -83,10 +82,62 @@ def trackAlerts(body):
 
     return NoContent, 201
 
+
+# Get Location events
+def get_trackGPS(start_timestamp, end_timestamp):
+    session = make_session()
+
+    start =  datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
+    end = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
+
+    statement = select(TrackLocations).where(
+        TrackLocations.timestamp >= start, 
+        TrackLocations.timestamp < end
+        )
+    results = [
+        result.to_dict() 
+        for result in session.execute(statement).scalars().all()
+    ]
+
+    session.close()
+
+    logger.info("Found %d trackGPSs (start: %s, end: %s)", 
+                len(results), 
+                start.strftime("%Y-%m-%dT%H:%M:%S"), 
+                end.strftime("%Y-%m-%dT%H:%M:%S"))
+
+    return results
+
+
+# Get Alert events
+def get_trackAlerts(start_timestamp, end_timestamp):
+    session = make_session()
+
+    start = datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
+    end = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
+
+    statement = select(TrackAlerts).where(
+        TrackAlerts.timestamp >= start, 
+        TrackAlerts.timestamp < end
+        )
+    results = [
+        result.to_dict() 
+        for result in session.execute(statement).scalars().all()
+    ]
+
+    session.close()
+
+    logger.info("Found %d trackAlerts (start: %s, end: %s)", 
+                len(results), 
+                start.strftime("%Y-%m-%dT%H:%M:%S"),
+                end.strftime("%Y-%m-%dT%H:%M:%S"))
+
+    return results
+
+
 app = connexion.FlaskApp(__name__, specification_dir='.')
 app.add_api("../storage/config/openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
-
     logger.info("Receiver Service received")
     app.run(port=8090)

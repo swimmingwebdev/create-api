@@ -24,6 +24,40 @@ paths:
           description: GPS successfully added.
         "400":
           description: Invalid input, object invalid.
+
+    get:
+      tags:
+        - trackGPSs
+      summary: Get location tracking data
+      operationId: app.get_trackGPS      
+      description: Retrieves all GPS tracking data within a start and end timestamp range.
+      parameters:
+        - name: start_timestamp
+          in: query
+          description: Limits the number of readings returned.
+          schema:
+            type: string
+            format: date-time
+            example: "2025-01-07T12:34:56.001Z"
+        - name: end_timestamp
+          in: query
+          description: Limits the number of readings returned.
+          schema:
+            type: string
+            format: date-time
+            example: "2025-01-08T12:34:56.001Z"
+      responses:
+        "200":
+          description: Successfully retrieved tracking data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrackGPS'
+        "400":
+          description: Invalid input, object invalid.    
+
   /track/alerts:
     post:
       summary: Add alerts for unexpected information
@@ -41,6 +75,40 @@ paths:
           description: Alerts successfully added.
         "400":
           description: Invalid input, object invalid.
+
+    get:
+      tags:
+        - trackAlerts    
+      summary: Get alert events
+      operationId: app.get_trackAlerts
+      description: Retrieves all alert events within a start and end timestamp range.
+      parameters:
+        - name: start_timestamp
+          in: query
+          description: Limits the number of readings returned.
+          schema:
+            type: string
+            format: date-time
+            example: "2025-01-07T12:34:56.001Z"
+        - name: end_timestamp
+          in: query
+          description: Limits the number of readings returned.
+          schema:
+            type: string
+            format: date-time
+            example: "2025-01-08T12:34:56.001Z"
+      responses:
+        "200":
+          description: Successfully retrieved alert events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrackAlerts'
+        "400":
+          description: Invalid input, object invalid.
+
 components:
   schemas:
     TrackGPS:
