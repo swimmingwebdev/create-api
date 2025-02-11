@@ -7,6 +7,8 @@ import json
 from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import requests
+import httpx
+import asyncio
 
 # Configurations
 with open("config/app_conf.yml", "r") as f:
@@ -29,6 +31,7 @@ STATS_FILE = "stats.json"
 def initialize_stats():
     if not os.path.exists(STATS_FILE):
         # default local time timestamp
+        # to set based on the local system timezone
         default_time = datetime(2000, 1, 1).astimezone().isoformat()
         stats = {
             "num_gps_events": 0,
@@ -45,22 +48,31 @@ def initialize_stats():
     with open(STATS_FILE, "r") as f:
         return json.load(f)
 
-def populate_stats():
+async def populate_stats():
     logger.info("Periodic processing has started")
 
     try:
         stats = initialize_stats()
 
         last_updated = stats['last_updated']  
-
+        # 2025-02-11T09:45:30.123456-08:00
         current_time = datetime.now().astimezone().isoformat()
+        
+        # httpx
+        async with httpx.AsyncClient() as client:
+            gps_response = await client.get(
+                f"{GPS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
+            )
+            alerts_response = await client.get(
+                f"{ALERTS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
+            )
 
-        gps_response = requests.get(
-            f"{GPS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
-            )
-        alerts_response = requests.get(
-            f"{ALERTS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
-            )
+        # gps_response = requests.get(
+        #     f"{GPS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
+        #     )
+        # alerts_response = requests.get(
+        #     f"{ALERTS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
+        #     )
 
         # Check response codes
         if gps_response.status_code != 200 or alerts_response.status_code != 200:
@@ -76,7 +88,8 @@ def populate_stats():
         logger.info(
             f"Received events - GPS: {len(gps_events)}, Alerts: {len(alerts_events)}"
         )
-   
+
+        # cumulative number for events
         stats["num_gps_events"] += len(gps_events)
         stats["num_alert_events"] += len(alerts_events)
         
@@ -89,8 +102,7 @@ def populate_stats():
 
             current_max_alerts = max(daily_alerts.values(), default=0)
             stats["max_alerts_per_day"] = max(stats["max_alerts_per_day"], current_max_alerts)
-
-        
+  
         # Calculate peak GPS
         if gps_events:
             daily_gps = {}
@@ -112,7 +124,7 @@ def populate_stats():
     except Exception as e:
         logger.error(f"Error in populate_stats: {str(e)}")    
 
-def get_stats():
+async def get_stats():
 
     logger.info("Stats request received.")
 
@@ -132,9 +144,10 @@ def get_stats():
 # to setup a periodic call to the function
 def init_scheduler():
     sched = BackgroundScheduler(daemon=True)
-    sched.add_job(populate_stats, 
-                  "interval", 
-                  seconds=app_config["scheduler"]["interval"])
+    sched.add_job(lambda: asyncio.run(populate_stats()), "interval", seconds=app_config["scheduler"]["interval"])
+    # sched.add_job(populate_stats, 
+    #               "interval", 
+    #               seconds=app_config["scheduler"]["interval"])
     sched.start()
     logger.info("Scheduler started")
 

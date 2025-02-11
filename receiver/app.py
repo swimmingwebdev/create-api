@@ -29,7 +29,7 @@ def trackGPS(body):
     # Logging when an event is received
     logger.info(f"Received event trackGPS with a trace id of {trace_id}")
 
-
+    # 2025-02-11T15:30:00Z >>> 2025-02-11 15:30:00+00:00
     received_timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
 
     

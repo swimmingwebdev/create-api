@@ -36,7 +36,7 @@ def make_session():
 # Store event 1 data
 def trackGPS(body):
     session = make_session()
-
+    # 2025-02-11T15:30:00Z >>> 2025-02-11 15:30:00+00:00
     timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
     trace_id = body["trace_id"]
 
