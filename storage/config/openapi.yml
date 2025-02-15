@@ -8,23 +8,6 @@ info:
   version: 1.0.0
 paths:
   /track/locations:
-    post:
-      summary: Report location
-      description: Adds GPS data to the system.
-      operationId: app.trackGPS
-      requestBody:
-        description: Location report to add.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TrackGPS'
-      responses:
-        "201":
-          description: GPS successfully added.
-        "400":
-          description: Invalid input, object invalid.
-
     get:
       tags:
         - trackGPSs
@@ -59,23 +42,6 @@ paths:
           description: Invalid input, object invalid.    
 
   /track/alerts:
-    post:
-      summary: Add alerts for unexpected information
-      description: Adds alerts and notifications to the system.
-      operationId: app.trackAlerts
-      requestBody:
-        description: Alerts to add.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TrackAlerts'
-      responses:
-        "201":
-          description: Alerts successfully added.
-        "400":
-          description: Invalid input, object invalid.
-
     get:
       tags:
         - trackAlerts    

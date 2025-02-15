@@ -6,7 +6,6 @@ import logging.config
 import json
 from apscheduler.schedulers.background import BackgroundScheduler
 import os
-import requests
 import httpx
 import asyncio
 
