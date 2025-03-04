@@ -1,0 +1,10 @@
+---
+version: 1
+eventstore1:
+  url: http://localhost:8090/track/locations
+eventstore2:
+  url: http://localhost:8090/track/alerts
+events:
+  hostname: localhost
+  port: 9092
+  topic: events
