@@ -1,21 +1,28 @@
 import connexion
 from connexion import NoContent
 from datetime import datetime
-import httpx
 import yaml 
 import logging.config
 import time
 from pykafka import KafkaClient
 import json
+import os
 
 # Configurations
-with open('../receiver/config/app_conf.yml', 'r') as f:
+with open('/config/receiver_conf.yml', 'r') as f:
     app_config = yaml.safe_load(f.read())
 
+# Make sure the logs directory exists
+log_directory = "/app/logs"
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
 # Logging
-with open('../receiver/config/log_conf.yml', 'r') as f:
+with open('/config/log_conf.yml', 'r') as f:
     log_config = yaml.safe_load(f.read())
     logging.config.dictConfig(log_config)
+
+logger = logging.getLogger('receiverLogger')
 
 # URL from config
 EVENT1_URL = app_config["eventstore1"]["url"]
@@ -109,8 +116,8 @@ def trackAlerts(body):
     return NoContent, 201
 
 app = connexion.FlaskApp(__name__, specification_dir='.')
-app.add_api("../receiver/config/openapi.yml", strict_validation=True, validate_responses=True)
+app.add_api("openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
     logger.info("Receiver Service received")
-    app.run(port=8080)
+    app.run(port=8080, host="0.0.0.0")

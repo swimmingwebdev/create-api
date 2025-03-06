@@ -7,17 +7,23 @@ import time
 from pykafka import KafkaClient
 from threading import Thread
 from pykafka.common import OffsetType
+import os
 
 # Configurations
-with open('config/app_conf.yml', 'r') as f:
+with open('/config/analyzer_conf.yml', 'r') as f:
     app_config = yaml.safe_load(f.read())
 
+# Make sure the logs directory exists
+log_directory = "/app/logs"
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
 # Logging
-with open('config/log_conf.yml', 'r') as f:
+with open('/config/log_conf.yml', 'r') as f:
     log_config = yaml.safe_load(f.read())
     logging.config.dictConfig(log_config)
 
-logger = logging.getLogger('basicLogger')
+logger = logging.getLogger('analyzerLogger')
 
 # Load Kafka config
 KAFKA_HOSTNAME = app_config["events"]["hostname"] 
@@ -138,9 +144,9 @@ def setup_kafka_thread():
     t1.start()
 
 app = connexion.FlaskApp(__name__, specification_dir='.')
-app.add_api("config/openapi.yml", strict_validation=True, validate_responses=True)
+app.add_api("openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
     logger.info("Starting Analyzer Service")
     setup_kafka_thread()
-    app.run(port=8110)
+    app.run(port=8110, host="0.0.0.0")

@@ -10,15 +10,20 @@ import httpx
 import asyncio
 
 # Configurations
-with open("config/app_conf.yml", "r") as f:
+with open("/config/processing_conf.yml", "r") as f:
     app_config = yaml.safe_load(f.read())
 
+# Make sure the logs directory exists
+log_directory = "/app/logs"
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
 # Logging
-with open("config/log_conf.yml", "r") as f:
+with open('/config/log_conf.yml', 'r') as f:
     log_config = yaml.safe_load(f.read())
     logging.config.dictConfig(log_config)
 
-logger = logging.getLogger("basicLogger")
+logger = logging.getLogger('processingLogger')
 
 # URL from config
 GPS_URL = app_config["eventstores"]["track_locations"]["url"]
@@ -151,9 +156,9 @@ def init_scheduler():
     logger.info("Scheduler started")
 
 app = connexion.FlaskApp(__name__, specification_dir=".")
-app.add_api("config/openapi.yml", strict_validation=True, validate_responses=True)
+app.add_api("openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
     logger.info("Processing Service started")
     init_scheduler()
-    app.run(port=8100)
+    app.run(port=8100, host="0.0.0.0")
