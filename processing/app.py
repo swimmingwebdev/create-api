@@ -8,9 +8,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import httpx
 import asyncio
+from asgiref.sync import async_to_sync
+
 
 # Configurations
-with open("/config/processing_conf.yml", "r") as f:
+with open("/config/app_conf.yml", "r") as f:
     app_config = yaml.safe_load(f.read())
 
 # Make sure the logs directory exists
@@ -29,7 +31,20 @@ logger = logging.getLogger('processingLogger')
 GPS_URL = app_config["eventstores"]["track_locations"]["url"]
 ALERTS_URL = app_config["eventstores"]["track_alerts"]["url"]
 
-STATS_FILE = "stats.json"
+STATS_FILE = "/app/data/stats.json"
+
+# if os.path.exists(STATS_FILE):
+#     with open(STATS_FILE, "r") as f:
+#         stats = json.load(f)
+
+#     stats["last_updated"] = "2000-01-01T00:00:00+00:00"
+
+#     with open(STATS_FILE, "w") as f:
+#         json.dump(stats, f, indent=2)
+
+#     print("Reset 'last_updated' to 2000-01-01T00:00:00+00:00")
+# else:
+#     print("stats.json not found!")
 
 # Initialize default stats
 def initialize_stats():
@@ -58,9 +73,12 @@ async def populate_stats():
     try:
         stats = initialize_stats()
 
-        last_updated = stats['last_updated']  
-        # 2025-02-11T09:45:30.123456-08:00
-        current_time = datetime.now().astimezone().isoformat()
+        last_str = stats['last_updated']  
+
+        end_str = datetime.now().astimezone().isoformat()
+
+        last_updated = last_str.replace("+", "%2B")
+        current_time = end_str.replace("+", "%2B")
         
         # httpx
         async with httpx.AsyncClient() as client:
@@ -148,7 +166,8 @@ async def get_stats():
 # to setup a periodic call to the function
 def init_scheduler():
     sched = BackgroundScheduler(daemon=True)
-    sched.add_job(lambda: asyncio.run(populate_stats()), "interval", seconds=app_config["scheduler"]["interval"])
+    sched.add_job(lambda: async_to_sync(populate_stats)(), "interval", seconds=app_config["scheduler"]["interval"])
+    # sched.add_job(lambda: asyncio.run(populate_stats()), "interval", seconds=app_config["scheduler"]["interval"])
     # sched.add_job(populate_stats, 
     #               "interval", 
     #               seconds=app_config["scheduler"]["interval"])

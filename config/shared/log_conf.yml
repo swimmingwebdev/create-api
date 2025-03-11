@@ -4,62 +4,37 @@ formatters:
   simple:
     format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 handlers:
-
   console:
     class: logging.StreamHandler
     level: DEBUG
     formatter: simple
     stream: ext://sys.stdout
     
-  # file:
-  #   class: logging.FileHandler
-  #   level: DEBUG
-  #   formatter: simple
-  #   filename: app.log
-
-  analyzer_file:
+  file:
     class: logging.FileHandler
     level: DEBUG
     formatter: simple
-    filename: logs/analyzer.log
-
-  receiver_file:
-    class: logging.FileHandler
-    level: DEBUG
-    formatter: simple
-    filename: logs/receiver.log
-
-  storage_file:
-    class: logging.FileHandler
-    level: DEBUG
-    formatter: simple
-    filename: logs/storage.log
-
-  processing_file:
-    class: logging.FileHandler
-    level: DEBUG
-    formatter: simple
-    filename: logs/processing.log
+    filename: /app/logs/app.log
 
 loggers:
   analyzerLogger:
     level: DEBUG
-    handlers: [console, analyzer_file]
+    handlers: [console, file]
     propagate: no
 
   receiverLogger:
     level: DEBUG
-    handlers: [console, receiver_file]
+    handlers: [console, file]
     propagate: no
 
   storageLogger:
     level: DEBUG
-    handlers: [console, storage_file]
+    handlers: [console, file]
     propagate: no
 
   processingLogger:
     level: DEBUG
-    handlers: [console, processing_file]
+    handlers: [console, file]
     propagate: no        
 
 root:

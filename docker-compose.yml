@@ -1,5 +1,6 @@
 services:
   receiver:
+    container_name: receiver
     build:
       context: receiver
       dockerfile: Dockerfile
@@ -7,19 +8,20 @@ services:
       - "8080:8080"
     volumes:
       - ./config/receiver:/config
-      - ./config/shared/log_conf.yml:/config/log_conf.yml 
+      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro
       - ./logs/receiver:/app/logs 
     depends_on:
       kafka:
         condition: service_healthy
 
   storage:
+    container_name: storage
     build:
       context: storage
       dockerfile: Dockerfile
     volumes:
       - ./config/storage:/config
-      - ./config/shared/log_conf.yml:/config/log_conf.yml    
+      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro    
       - ./logs/storage:/app/logs
     depends_on:
       db:
@@ -28,6 +30,7 @@ services:
         condition: service_healthy  
 
   processing:
+    container_name: processing
     build:
       context: processing
       dockerfile: Dockerfile
@@ -35,13 +38,14 @@ services:
       - "8100:8100"
     volumes:
       - ./config/processing:/config
-      - ./config/shared/log_conf.yml:/config/log_conf.yml 
+      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro
       - ./logs/processing:/app/logs
       - ./data:/app/data
     depends_on:
       - storage
              
   analyzer:
+    container_name: analyzer
     build:
       context: analyzer
       dockerfile: Dockerfile
@@ -49,19 +53,21 @@ services:
       - "8110:8110"
     volumes:
       - ./config/analyzer:/config  
-      - ./config/shared/log_conf.yml:/config/log_conf.yml 
+      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro 
       - ./logs/analyzer:/app/logs      
     depends_on:
       kafka:
        condition: service_healthy
   
   zookeeper:
+    container_name: zookeeper
     image: wurstmeister/zookeeper
     volumes:
       - zookeeper-data:/data
       - zookeeper-log:/datalog
 
   kafka:
+    container_name: kafka
     image: wurstmeister/kafka
     command: [start-kafka.sh]
     ports:
@@ -86,17 +92,18 @@ services:
       retries: 5
 
   db:
+    container_name: mysql
     image: mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 1234 
-      MYSQL_USER: mysqluser
-      MYSQL_PASSWORD: 1234
-      MYSQL_DATABASE: mysimpletracker
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     ports:
-      - "3306:3306"
+      - "${DB_PORT}:3306"
     volumes:
-      - my-db:/var/lib/mysql  
+      - my-db:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s

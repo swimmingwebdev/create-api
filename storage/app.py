@@ -1,7 +1,7 @@
 import connexion
 from connexion import NoContent
 from models import Base, TrackAlerts, TrackLocations
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone
 import yaml
@@ -14,7 +14,7 @@ from pykafka.common import OffsetType
 import os
 
 # Configurations
-with open('/config/storage_conf.yml', 'r') as f:
+with open('/config/app_conf.yml', 'r') as f:
     app_config = yaml.safe_load(f.read())
 
 # Make sure the logs directory exists
@@ -43,9 +43,38 @@ KAFKA_TOPIC = app_config["events"]["topic"]
 
 # Initialize the engine
 db_url = f"mysql+mysqldb://{db_user}:{db_password}@{db_hostname}:{db_port}/{db_name}"
-engine = create_engine(db_url)
-# Create missing tables
-Base.metadata.create_all(engine)
+
+# MySQL connection
+MAX_RETRIES = 5
+for i in range(MAX_RETRIES):
+    try:
+        engine = create_engine(db_url)
+        # Create missing tables
+        Base.metadata.create_all(engine)
+        logger.info("Connected to MySQL")
+        break
+    except Exception as e:
+        logger.error("MySQL not ready.")
+        time.sleep(5)
+else:
+    logger.error("MySQL connection failed after retries.")
+    exit(1)
+
+# Ensure db_user has permissions
+def setup_database():
+    try:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text(f"GRANT ALL PRIVILEGES ON {db_name}.* TO '{db_user}'@'%';"))
+                conn.execute(text("FLUSH PRIVILEGES;"))
+                logger.info("Database permissions granted.")
+            except Exception as e:
+                logger.error(f"Could not grant database privileges: {e}")
+    except Exception as e:
+        logger.error(f"Failed to connect to database during permission setup: {e}")
+    return 
+
+setup_database()
 
 def make_session():
     return sessionmaker(bind=engine)()
@@ -95,12 +124,19 @@ def get_trackAlerts(start_timestamp, end_timestamp):
 
     return results
 
+
 def process_messages():
     """ Process event messages """
     while True:  # Keep the consumer running even if it crashes
         try:
             hostname = f"{KAFKA_HOSTNAME}:{KAFKA_PORT}"
             client = KafkaClient(hosts=hostname)
+
+            if KAFKA_TOPIC.encode("utf-8") not in client.topics:
+                logger.error(f"Kafka topic '{KAFKA_TOPIC}' does not exist. Retrying in 10s...")
+                time.sleep(10)
+                continue  # Skip iteration if topic does not exist
+
             topic = client.topics[KAFKA_TOPIC.encode("utf-8")]
 
             consumer = topic.get_simple_consumer(
@@ -113,6 +149,9 @@ def process_messages():
             
             # Stay in the loop, waiting for new messages
             for msg in consumer:
+                if msg is None:
+                    continue  # No new messages, keep waiting
+
                 try:
                     msg_str = msg.value.decode("utf-8")
                     msg = json.loads(msg_str)
@@ -177,6 +216,6 @@ app = connexion.FlaskApp(__name__, specification_dir='.')
 app.add_api("openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
-    logger.info("Receiver Service received")
+    logger.info("Storage Service received")
     setup_kafka_thread()
     app.run(port=8090, host="0.0.0.0")

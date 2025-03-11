@@ -6,5 +6,5 @@ eventstore2:
   url: http://storage:8090/track/alerts
 events:
   hostname: kafka
-  port: 9092
+  port: 29092
   topic: events

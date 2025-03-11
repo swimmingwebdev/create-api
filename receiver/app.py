@@ -9,7 +9,7 @@ import json
 import os
 
 # Configurations
-with open('/config/receiver_conf.yml', 'r') as f:
+with open('/config/app_conf.yml', 'r') as f:
     app_config = yaml.safe_load(f.read())
 
 # Make sure the logs directory exists
@@ -32,7 +32,15 @@ KAFKA_HOSTNAME = app_config["events"]["hostname"]
 KAFKA_PORT = app_config["events"]["port"] 
 KAFKA_TOPIC = app_config["events"]["topic"] 
 
-logger = logging.getLogger('basicLogger')
+# Kafka Connection (Persistent)
+try:
+    client = KafkaClient(hosts=f"{KAFKA_HOSTNAME}:{KAFKA_PORT}")
+    topic = client.topics[KAFKA_TOPIC.encode("utf-8")]
+    producer = topic.get_sync_producer()
+    logger.info(f"Connected to Kafka at {KAFKA_HOSTNAME}:{KAFKA_PORT}")
+except Exception as e:
+    logger.error(f"Failed to connect to Kafka: {str(e)}")
+    producer = None
 
 # Event 1
 def trackGPS(body):
@@ -40,10 +48,10 @@ def trackGPS(body):
     trace_id = time.time_ns()
 
     # Logging when an event is received
-    logger.info(f"Received event trackGPS with a trace id of {trace_id}")
+    logger.info(f"Received event trackGPS of [Trace ID: {trace_id}].")
 
     # 2025-02-11T15:30:00Z >>> 2025-02-11 15:30:00+00:00
-    received_timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
+    received_timestamp = datetime.fromisoformat(body.get("timestamp", "").replace("Z", "+00:00"))
 
     data = {
             "device_id": body["device_id"],
@@ -54,13 +62,6 @@ def trackGPS(body):
             "trace_id" : trace_id,
     }
 
-    # Send data to database
-    # response = httpx.post(EVENT1_URL, json=data)
-
-    hostname = f"{KAFKA_HOSTNAME}:{KAFKA_PORT}"
-    client = KafkaClient(hosts=hostname)
-    topic = client.topics[KAFKA_TOPIC.encode("utf-8")]
-    producer = topic.get_sync_producer()
     msg = { 
         "type": "TrackGPS",
         "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -68,10 +69,18 @@ def trackGPS(body):
     }
 
     msg_str = json.dumps(msg)
-    producer.produce(msg_str.encode('utf-8'))
 
-    # Logging the reseponse of storage service
-    logger.info(f"Response for event trackGPS (id: {trace_id}).")
+    # Send data to kafka
+    if producer:
+        try:
+            producer.produce(msg_str.encode('utf-8'))
+            logger.info(f"[Trace ID: {trace_id}] Successfully sent to Kafka topic '{KAFKA_TOPIC}'.")
+        except Exception as e:
+            logger.error(f"[Trace ID: {trace_id}] Kafka error: {str(e)}")
+            return {"error": "Kafka failure"}, 500
+    else:
+        logger.error(f"[Trace ID: {trace_id}] Kafka producer is not available.")
+        return {"error": "Kafka is down"}, 500
 
     return NoContent, 201
 
@@ -81,9 +90,9 @@ def trackAlerts(body):
     trace_id = time.time_ns()
 
     # Logging when an event is received
-    logger.info(f"Received event trackAlerts with a trace id of {trace_id} to Kafka topic '{KAFKA_TOPIC}'.")
+    logger.info(f"Received event trackAlerts with a trace id of [Trace ID: {trace_id}].")
 
-    received_timestamp = datetime.fromisoformat(body["timestamp"].replace("Z", "+00:00"))
+    received_timestamp = datetime.fromisoformat(body.get("timestamp", "").replace("Z", "+00:00"))
 
     data = {
             "device_id": body["device_id"],
@@ -95,23 +104,24 @@ def trackAlerts(body):
             "trace_id" : trace_id,
     }
 
-    # Send data to database
-    # response = httpx.post(EVENT2_URL, json=data)
-
-    hostname = f"{KAFKA_HOSTNAME}:{KAFKA_PORT}"
-    client = KafkaClient(hosts=hostname)
-    topic = client.topics[KAFKA_TOPIC.encode("utf-8")]
-    producer = topic.get_sync_producer()
     msg = { 
         "type": "TrackAlerts",
         "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "payload": data
     }
     msg_str = json.dumps(msg)
-    producer.produce(msg_str.encode('utf-8'))
 
-    # Logging the reseponse of storage service 
-    logger.info(f"Response for event trackAlerts (id: {trace_id}) to Kafka topic '{KAFKA_TOPIC}'.")
+    # Send to Kafka
+    if producer:
+        try:
+            producer.produce(msg_str.encode('utf-8'))
+            logger.info(f"[Trace ID: {trace_id}] Successfully sent to Kafka topic '{KAFKA_TOPIC}'.")
+        except Exception as e:
+            logger.error(f"[Trace ID: {trace_id}] Kafka error: {str(e)}")
+            return {"error": "Kafka failure"}, 500
+    else:
+        logger.error(f"[Trace ID: {trace_id}] Kafka producer is not available.")
+        return {"error": "Kafka is down"}, 500
 
     return NoContent, 201
 
@@ -119,5 +129,5 @@ app = connexion.FlaskApp(__name__, specification_dir='.')
 app.add_api("openapi.yml", strict_validation=True, validate_responses=True)
 
 if __name__ == "__main__":
-    logger.info("Receiver Service received")
+    logger.info("Receiver Service started")
     app.run(port=8080, host="0.0.0.0")
