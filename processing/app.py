@@ -61,7 +61,9 @@ def initialize_stats():
         }
 
         with open(STATS_FILE, "w") as f:
-            json.dump(stats, f, indent=2)        
+            json.dump(stats, f, indent=2) 
+            f.flush()  # Ensure data is written immediately
+            os.fsync(f.fileno())  # Force write to disk       
         return stats
     
     with open(STATS_FILE, "r") as f:

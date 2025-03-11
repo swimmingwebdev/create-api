@@ -8,3 +8,9 @@ __pycache__
 *.log
 stats.json
 .env
+/data/database
+/data/kafka
+/config/processing/log_conf.yml
+/config/receiver/log_conf.yml
+/config/storage/log_conf.yml
+/config/analyzer/log_conf.yml
