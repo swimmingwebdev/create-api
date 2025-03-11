@@ -9,7 +9,7 @@ services:
     volumes:
       - ./config/receiver:/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml:ro
-      - ./logs/receiver:/app/logs:rw 
+      - ./logs/receiver:/app/logs 
     depends_on:
       kafka:
         condition: service_healthy
@@ -22,7 +22,7 @@ services:
     volumes:
       - ./config/storage:/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml:ro    
-      - ./logs/storage:/app/logs:rw
+      - ./logs/storage:/app/logs
       - ./data/database:/app/data/database 
       - ./data/kafka:/app/data/kafka 
     depends_on:
@@ -41,8 +41,8 @@ services:
     volumes:
       - ./config/processing:/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml:ro
-      - ./logs/processing:/app/logs:rw
-      - ./data/processing:/app/data:rw
+      - ./logs/processing:/app/logs
+      - ./data/processing:/app/data
     depends_on:
       - storage
              
@@ -56,7 +56,7 @@ services:
     volumes:
       - ./config/analyzer:/config  
       - ./config/shared/log_conf.yml:/config/log_conf.yml:ro 
-      - ./logs/analyzer:/app/logs:rw      
+      - ./logs/analyzer:/app/logs      
     depends_on:
       kafka:
        condition: service_healthy
