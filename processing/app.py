@@ -33,18 +33,18 @@ ALERTS_URL = app_config["eventstores"]["track_alerts"]["url"]
 
 STATS_FILE = "/app/data/stats.json"
 
-# if os.path.exists(STATS_FILE):
-#     with open(STATS_FILE, "r") as f:
-#         stats = json.load(f)
+if os.path.exists(STATS_FILE):
+    with open(STATS_FILE, "r") as f:
+        stats = json.load(f)
 
-#     stats["last_updated"] = "2000-01-01T00:00:00+00:00"
+    stats["last_updated"] = "2000-01-01T00:00:00+00:00"
 
-#     with open(STATS_FILE, "w") as f:
-#         json.dump(stats, f, indent=2)
+    with open(STATS_FILE, "w") as f:
+        json.dump(stats, f, indent=2)
 
-#     print("Reset 'last_updated' to 2000-01-01T00:00:00+00:00")
-# else:
-#     print("stats.json not found!")
+    print("Reset 'last_updated' to 2000-01-01T00:00:00+00:00")
+else:
+    print("stats.json not found!")
 
 # Initialize default stats
 def initialize_stats():
@@ -86,9 +86,15 @@ async def populate_stats():
     try:
         stats = initialize_stats()
 
-        last_str = stats['last_updated']  
-
+        last_str = stats['last_updated']
         end_str = datetime.now().astimezone().isoformat()
+
+        last_updated_obj = datetime.fromisoformat(last_str)
+        if last_updated_obj > end_str:
+            logger.warning(f"Found future timestamp in stats file: {last_str}")
+            # Reset to a safe past time
+            last_str = "2000-01-01T00:00:00+00:00"
+            logger.info(f"Reset timestamp to {last_str}")
 
         last_updated = last_str.replace("+", "%2B")
         current_time = end_str.replace("+", "%2B")
@@ -152,6 +158,7 @@ async def populate_stats():
 
         with open(STATS_FILE, "w") as f:
             json.dump(stats, f, indent=2)
+
         
         logger.debug(f"Updated statistics: {stats}")
         logger.info("Periodic processing has ended")
