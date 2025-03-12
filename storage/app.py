@@ -60,69 +60,71 @@ else:
     logger.error("MySQL connection failed after retries.")
     exit(1)
 
-# Ensure db_user has permissions
-def setup_database():
-    try:
-        with engine.connect() as conn:
-            try:
-                conn.execute(text(f"GRANT ALL PRIVILEGES ON {db_name}.* TO '{db_user}'@'%';"))
-                conn.execute(text("FLUSH PRIVILEGES;"))
-                logger.info("Database permissions granted.")
-            except Exception as e:
-                logger.error(f"Could not grant database privileges: {e}")
-    except Exception as e:
-        logger.error(f"Failed to connect to database during permission setup: {e}")
-    return 
-
-setup_database()
-
 def make_session():
     return sessionmaker(bind=engine)()
+
+def parse_timestamp(timestamp):
+    try:
+        return datetime.strptime(timestamp.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
+    except ValueError:
+        return datetime.strptime(timestamp.replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
+
 
 # Get Location events
 def get_trackGPS(start_timestamp, end_timestamp):
     session = make_session()
+    try:
+        start = parse_timestamp(start_timestamp)
+        end = parse_timestamp(end_timestamp)
 
-    start =  datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
-    end = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
+        statement = select(TrackLocations).where(
+            TrackLocations.date_created >= start, 
+            TrackLocations.date_created < end
+            )
+        results = [
+            result.to_dict() 
+            for result in session.execute(statement).scalars().all()
+        ]
 
-    statement = select(TrackLocations).where(
-        TrackLocations.timestamp >= start, 
-        TrackLocations.timestamp < end
-        )
-    results = [
-        result.to_dict() 
-        for result in session.execute(statement).scalars().all()
-    ]
+        logger.debug(f"Querying tracklocations from {start} to {end}")
+        logger.info(f"Found {len(results)} trackGPS events (start: {start}, end: {end})")
+        return results
 
-    session.close()
-
-    logger.info(f"Found {len(results)} trackGPS events (start: {start}, end: {end})")
-
-    return results
+    except Exception as e:
+        logger.error(f"Error retrieving GPS data: {e}")
+        return {"error": "Database error"}, 500
+    
+    finally:
+        session.close()
 
 
 # Get Alert events
 def get_trackAlerts(start_timestamp, end_timestamp):
     session = make_session()
 
-    start = datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
-    end = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
+    try:
+        start = parse_timestamp(start_timestamp)
+        end = parse_timestamp(end_timestamp)
+        
+        statement = select(TrackAlerts).where(
+            TrackAlerts.date_created >= start, 
+            TrackAlerts.date_created < end
+            )
+        results = [
+            result.to_dict() 
+            for result in session.execute(statement).scalars().all()
+        ]
 
-    statement = select(TrackAlerts).where(
-        TrackAlerts.timestamp >= start, 
-        TrackAlerts.timestamp < end
-        )
-    results = [
-        result.to_dict() 
-        for result in session.execute(statement).scalars().all()
-    ]
+        logger.debug(f"Querying trackalerts from {start} to {end}")
+        logger.info(f"Found {len(results)} trackAlerts events (start: {start}, end: {end})")
+        return results
 
-    session.close()
-
-    logger.info(f"Found {len(results)} trackAlerts events (start: {start}, end: {end})")
-
-    return results
+    except Exception as e:
+        logger.error(f"Error retrieving alerts data: {e}")
+        return {"error": "Database error"}, 500
+    
+    finally:
+        session.close()
 
 
 def process_messages():

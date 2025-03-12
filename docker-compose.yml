@@ -8,7 +8,7 @@ services:
       - "8080:8080"
     volumes:
       - ./config/receiver:/config
-      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro
+      - ./config/shared/log_conf.yml:/config/log_conf.yml
       - ./logs/receiver:/app/logs 
     depends_on:
       kafka:
@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./config/storage:/config
-      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro    
+      - ./config/shared/log_conf.yml:/config/log_conf.yml   
       - ./logs/storage:/app/logs
       - ./data/database:/app/data/database 
       - ./data/kafka:/app/data/kafka 
@@ -40,7 +40,7 @@ services:
       - "8100:8100"
     volumes:
       - ./config/processing:/config
-      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro
+      - ./config/shared/log_conf.yml:/config/log_conf.yml
       - ./logs/processing:/app/logs
       - ./data/processing:/app/data
     depends_on:
@@ -55,7 +55,7 @@ services:
       - "8110:8110"
     volumes:
       - ./config/analyzer:/config  
-      - ./config/shared/log_conf.yml:/config/log_conf.yml:ro 
+      - ./config/shared/log_conf.yml:/config/log_conf.yml
       - ./logs/analyzer:/app/logs      
     depends_on:
       kafka:

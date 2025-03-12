@@ -1,6 +1,14 @@
-FROM python:3
+FROM python:3.11-slim
 
 LABEL maintainer="yjung35@my.bcit.ca"
+
+# Install required system dependencies for mysqlclient
+RUN apt-get update && apt-get install -y \
+    default-libmysqlclient-dev \
+    build-essential \
+    pkg-config \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /app
 

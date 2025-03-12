@@ -1,5 +1,4 @@
 import connexion
-from connexion import NoContent
 from datetime import datetime, timezone
 import yaml 
 import logging.config
@@ -8,8 +7,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import httpx
 import asyncio
-from asgiref.sync import async_to_sync
-
 
 # Configurations
 with open("/config/app_conf.yml", "r") as f:
@@ -33,45 +30,13 @@ ALERTS_URL = app_config["eventstores"]["track_alerts"]["url"]
 
 STATS_FILE = "/app/data/stats.json"
 
-if os.path.exists(STATS_FILE):
-    with open(STATS_FILE, "r") as f:
-        stats = json.load(f)
-
-    stats["last_updated"] = "2000-01-01T00:00:00+00:00"
-
-    with open(STATS_FILE, "w") as f:
-        json.dump(stats, f, indent=2)
-
-    print("Reset 'last_updated' to 2000-01-01T00:00:00+00:00")
-else:
-    print("stats.json not found!")
-
 # Initialize default stats
 def initialize_stats():
-    try:
-        if not os.path.exists(STATS_FILE):
-            # default local time timestamp
-            # to set based on the local system timezone
-            default_time = datetime(2000, 1, 1).astimezone().isoformat()
-            stats = {
-                "num_gps_events": 0,
-                "num_alert_events": 0,
-                "max_alerts_per_day": 0,
-                "peak_gps_activity_day": 0,
-                "last_updated": default_time
-            }
-
-            with open(STATS_FILE, "w") as f:
-                json.dump(stats, f, indent=2) 
-                logger.info(f"Created new stats file at {STATS_FILE}")    
-            return stats
-        else:
-            with open(STATS_FILE, "r") as f:
-                return json.load(f)
-    except Exception as e:
-        logger.error(f"Error in initialize_stats: {str(e)}")
+    if not os.path.exists(STATS_FILE):
+        # default local time timestamp
+        # to set based on the local system timezone
         default_time = datetime(2000, 1, 1).astimezone().isoformat()
-        return {
+        stats = {
             "num_gps_events": 0,
             "num_alert_events": 0,
             "max_alerts_per_day": 0,
@@ -79,25 +44,28 @@ def initialize_stats():
             "last_updated": default_time
         }
 
+        with open(STATS_FILE, "w") as f:
+            json.dump(stats, f, indent=2)        
+        return stats
+    else:
+        with open(STATS_FILE, "r") as f:
+            return json.load(f)
 
+def clean_timestamp(timestamp):
+    try:
+        return datetime.fromisoformat(timestamp).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    except ValueError:
+        logger.error(f"Invalid timestamp format: {timestamp}. Resetting to default.")
+        return "2000-01-01T00:00:00Z"  
+    
 async def populate_stats():
     logger.info("Periodic processing has started")
 
     try:
         stats = initialize_stats()
 
-        last_str = stats['last_updated']
-        end_str = datetime.now().astimezone().isoformat()
-
-        last_updated_obj = datetime.fromisoformat(last_str)
-        if last_updated_obj > end_str:
-            logger.warning(f"Found future timestamp in stats file: {last_str}")
-            # Reset to a safe past time
-            last_str = "2000-01-01T00:00:00+00:00"
-            logger.info(f"Reset timestamp to {last_str}")
-
-        last_updated = last_str.replace("+", "%2B")
-        current_time = end_str.replace("+", "%2B")
+        last_updated = clean_timestamp(stats["last_updated"])
+        current_time = datetime.now().astimezone().isoformat().replace("+00:00", "Z")
         
         # httpx
         async with httpx.AsyncClient() as client:
@@ -107,13 +75,8 @@ async def populate_stats():
             alerts_response = await client.get(
                 f"{ALERTS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
             )
-
-        # gps_response = requests.get(
-        #     f"{GPS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
-        #     )
-        # alerts_response = requests.get(
-        #     f"{ALERTS_URL}?start_timestamp={last_updated}&end_timestamp={current_time}"
-        #     )
+        logger.debug(f"GPS API Response: {gps_response.status_code}, {gps_response.text}")
+        logger.debug(f"Alerts API Response: {alerts_response.status_code}, {alerts_response.text}")
 
         # Check response codes
         if gps_response.status_code != 200 or alerts_response.status_code != 200:
@@ -135,30 +98,25 @@ async def populate_stats():
         stats["num_alert_events"] += len(alerts_events)
         
         # Calculate max alerts
-        if alerts_events:
-            daily_alerts = {}
-            for event in alerts_events:
-                date = event["timestamp"].split("T")[0]
-                daily_alerts[date] = daily_alerts.get(date, 0) + 1
+        daily_alerts = {}
+        for event in alerts_events:
+            date = event["timestamp"].split("T")[0]
+            daily_alerts[date] = daily_alerts.get(date, 0) + 1
 
-            current_max_alerts = max(daily_alerts.values(), default=0)
-            stats["max_alerts_per_day"] = max(stats["max_alerts_per_day"], current_max_alerts)
-  
+        stats["max_alerts_per_day"] = max(daily_alerts.values(), default=stats["max_alerts_per_day"])
+    
         # Calculate peak GPS
-        if gps_events:
-            daily_gps = {}
-            for event in gps_events:
-                date = event["timestamp"].split("T")[0]
-                daily_gps[date] = daily_gps.get(date, 0) + 1
+        daily_gps = {}
+        for event in gps_events:
+            date = event["timestamp"].split("T")[0]
+            daily_gps[date] = daily_gps.get(date, 0) + 1
 
-            current_peak_gps = max(daily_gps.values(), default=0)
-            stats["peak_gps_activity_day"] = max(stats["peak_gps_activity_day"], current_peak_gps)
-        
+        stats["peak_gps_activity_day"] = max(daily_gps.values(), default=stats["peak_gps_activity_day"])
+    
         stats["last_updated"] = current_time
 
         with open(STATS_FILE, "w") as f:
             json.dump(stats, f, indent=2)
-
         
         logger.debug(f"Updated statistics: {stats}")
         logger.info("Periodic processing has ended")
@@ -178,16 +136,13 @@ async def get_stats():
         stats = json.load(f)
 
     logger.debug(f"Stats contents: {stats}")
-
     logger.info("Stats request completed.")
-
     return stats, 200
 
 # to setup a periodic call to the function
 def init_scheduler():
     sched = BackgroundScheduler(daemon=True)
-    sched.add_job(lambda: async_to_sync(populate_stats)(), "interval", seconds=app_config["scheduler"]["interval"])
-    # sched.add_job(lambda: asyncio.run(populate_stats()), "interval", seconds=app_config["scheduler"]["interval"])
+    sched.add_job(lambda: asyncio.run(populate_stats()), "interval", seconds=app_config["scheduler"]["interval"])
     # sched.add_job(populate_stats, 
     #               "interval", 
     #               seconds=app_config["scheduler"]["interval"])
