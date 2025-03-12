@@ -14,7 +14,7 @@ from pykafka.common import OffsetType
 import os
 
 # Configurations
-with open('/config/app_conf.yml', 'r') as f:
+with open('/app/config/app_conf.yml', 'r') as f:
     app_config = yaml.safe_load(f.read())
 
 # Make sure the logs directory exists

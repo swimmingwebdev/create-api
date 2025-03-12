@@ -7,7 +7,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config/receiver:/config
+      - ./config/receiver:/app/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml
       - ./logs/receiver:/app/logs 
     depends_on:
@@ -20,7 +20,7 @@ services:
       context: storage
       dockerfile: Dockerfile
     volumes:
-      - ./config/storage:/config
+      - ./config/storage:/app/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml   
       - ./logs/storage:/app/logs
       - ./data/database:/app/data/database 
@@ -39,7 +39,7 @@ services:
     ports:
       - "8100:8100"
     volumes:
-      - ./config/processing:/config
+      - ./config/processing:/app/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml
       - ./logs/processing:/app/logs
       - ./data/processing:/app/data
@@ -54,7 +54,7 @@ services:
     ports:
       - "8110:8110"
     volumes:
-      - ./config/analyzer:/config  
+      - ./config/analyzer:/app/config  
       - ./config/shared/log_conf.yml:/config/log_conf.yml
       - ./logs/analyzer:/app/logs      
     depends_on:
