@@ -48,11 +48,30 @@ STATS_FILE = "/app/data/stats.json"
 
 # Initialize default stats
 def initialize_stats():
-    if not os.path.exists(STATS_FILE):
-        # default local time timestamp
-        # to set based on the local system timezone
+    try:
+        if not os.path.exists(STATS_FILE):
+            # default local time timestamp
+            # to set based on the local system timezone
+            default_time = datetime(2000, 1, 1).astimezone().isoformat()
+            stats = {
+                "num_gps_events": 0,
+                "num_alert_events": 0,
+                "max_alerts_per_day": 0,
+                "peak_gps_activity_day": 0,
+                "last_updated": default_time
+            }
+
+            with open(STATS_FILE, "w") as f:
+                json.dump(stats, f, indent=2) 
+                logger.info(f"Created new stats file at {STATS_FILE}")    
+            return stats
+        else:
+            with open(STATS_FILE, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Error in initialize_stats: {str(e)}")
         default_time = datetime(2000, 1, 1).astimezone().isoformat()
-        stats = {
+        return {
             "num_gps_events": 0,
             "num_alert_events": 0,
             "max_alerts_per_day": 0,
@@ -60,14 +79,6 @@ def initialize_stats():
             "last_updated": default_time
         }
 
-        with open(STATS_FILE, "w") as f:
-            json.dump(stats, f, indent=2) 
-            f.flush()  # Ensure data is written immediately
-            os.fsync(f.fileno())  # Force write to disk       
-        return stats
-    
-    with open(STATS_FILE, "r") as f:
-        return json.load(f)
 
 async def populate_stats():
     logger.info("Periodic processing has started")
