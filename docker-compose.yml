@@ -5,7 +5,7 @@ services:
       context: receiver
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8080:8080"  
     volumes:
       - ./config/receiver:/app/config
       - ./config/shared/log_conf.yml:/config/log_conf.yml
@@ -13,6 +13,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+    networks:
+      - app_network
 
   storage:
     container_name: storage
@@ -30,6 +32,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy  
+    networks:
+      - app_network
 
   processing:
     container_name: processing
@@ -45,7 +49,9 @@ services:
       - ./data/processing:/app/data
     depends_on:
       - storage
-             
+    networks:
+      - app_network
+
   analyzer:
     container_name: analyzer
     build:
@@ -60,20 +66,24 @@ services:
     depends_on:
       kafka:
        condition: service_healthy
-  
+    networks:
+      - app_network
+
   zookeeper:
     container_name: zookeeper
     image: wurstmeister/zookeeper
     volumes:
       - zookeeper-data:/data
       - zookeeper-log:/datalog
+    networks:
+      - app_network  
 
   kafka:
     container_name: kafka
     image: wurstmeister/kafka
     command: [start-kafka.sh]
-    expose:
-      - "9092"
+    ports:
+      - "9092:9092"
     environment:
       KAFKA_CREATE_TOPICS: "events:1:1" # topic:partition:replicas
       KAFKA_ADVERTISED_HOST_NAME: kafka # docker-machine ip
@@ -87,8 +97,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - zookeeper
+    networks:
+      - app_network  
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --list"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -106,11 +118,17 @@ services:
       - "${DB_PORT}:3306"
     volumes:
       - ./data/database:/var/lib/mysql
+    networks:
+      - app_network  
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
+
+networks:
+  app_network:
+    driver: bridge
 
 volumes:
   zookeeper-data:
