@@ -32,7 +32,7 @@ STATS_FILE = "/app/data/stats.json"
 
 # Initialize default stats
 def initialize_stats():
-    if not os.path.exists(STATS_FILE):
+    if not os.path.exists(STATS_FILE) or os.stat(STATS_FILE).st_size == 0:
         # default local time timestamp
         # to set based on the local system timezone
         default_time = datetime(2000, 1, 1).astimezone().isoformat()

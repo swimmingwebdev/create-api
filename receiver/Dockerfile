@@ -17,14 +17,9 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copy the source code
 COPY . /app
 
-# Create a non-root user with a known UID/GID
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-
-# Set ownership before switching users
-RUN chown -R appuser:appgroup /app
-
-# Switch to the new user
-USER appuser
+# Change permissions and become a non-privileged user
+RUN chown -R nobody:nogroup /app
+USER nobody
 
 # Tells on which port the service listens in the container
 EXPOSE 8080
